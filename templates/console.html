@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+<head>
+<title>Kafka Console</title>
+<script type="text/javascript" src="/static/jquery-1.8.2.min.js"></script>
+<script type="text/javascript" language="javascript">
+/*common method to submit form*/
+function submitForm(formId, formAction){
+	var frm = document.getElementById(formId);
+	frm.action=formAction;
+	frm.submit();
+}
+/*JS trim method*/
+function trim(str){
+	var s=str.replace(/^\s\s*/,'').replace(/\s\s*$/,'');
+	return s;
+}
+
+function show_result(data){
+	//console.log(data.topic_rows);
+	var total_lags = $('#total_lags').val();
+	var tab=document.getElementById("topic_details"); 
+	var num=tab.rows.length;
+	//console.log(num);
+	for(var i=1;i<num;i++){
+		tab.deleteRow(1);
+	}
+	data_rows_count = data.topic_rows.length;
+	for(var i=0;i<data_rows_count;i++){
+		one_row_data = data.topic_rows[i];
+		//console.log(one_row_data);
+		tab.insertRow(i+1);
+		for(var j=0;j<one_row_data.length;j++){
+			tab.rows[i+1].insertCell(j);
+			tab.rows[i+1].cells[j].innerHTML=one_row_data[j];
+		}
+	}
+	cols_cnt = tab.rows[data_rows_count].cells.length;
+	//console.log(cols_cnt);
+	total_lag1 = tab.rows[data_rows_count].cells[cols_cnt-1].innerHTML;
+	if (total_lags != ''){
+		total_lags = parseInt(total_lags, 10);
+		total_lag1 = parseInt(total_lag1, 10);
+		if(total_lag1 > total_lags){
+			tab.rows[data_rows_count].cells[cols_cnt-1].innerHTML = '<font color="red" > ' + total_lag1 + '</font>'
+		}else{
+			tab.rows[data_rows_count].cells[cols_cnt-1].innerHTML = '<font color="green" > ' + total_lag1 + '</font>'
+		}
+		$('#total_lags').val(total_lag1);
+	}else{
+		$('#total_lags').val(total_lag1);
+	}
+	
+}
+function refresh(){
+	consumer_group = $('#consumer_group').val();
+	topic = $('#topic').val();
+  	$.getJSON("/kafka/"+consumer_group+"/" + topic+'?json=true', function(json){
+  		show_result(json);
+  	});
+}
+$(document).ready(function(){
+	setInterval('refresh();', 5000);
+});
+
+</script>
+<style type="text/css">
+.errorMessage {
+	color:red;
+}
+a {
+	text-decoration:none;
+}
+a:hover {
+	/*background-color:#FFFFBB;*/
+	color:green;
+	text-decoration:underline;
+}
+tr {
+	height: 30px;
+}
+</style>
+</head>
+<body>
+
+<h3>Kafka Console</h3>
+<table>
+<tr>
+<td align='right'><b>Consumer:</b></td> <td> {{rs.consumer_group}}</td>
+</tr>
+<tr>
+<td align='right'><b>Topic:</b></td><td>{{rs.topic}}</td>
+</tr> 
+</table>
+<input type='hidden' id='consumer_group' value='{{rs.consumer_group}}' />
+<input type='hidden' id='topic' value='{{rs.topic}}' />
+<input type='hidden' id='total_lags' value='{{rs.total_lag}}' />
+<table width="600" border="1" style="border-collapse:collapse;" id='topic_details'>   
+	<tr bgColor="#CCFFFF" >
+		<th>Partition</th>
+		<th>offset</th>
+		<th>logsize</th>
+		<th>lag</th>
+	</tr>
+	{% for f in rs.topic_rows %}
+	<tr>
+		<td >{{ f.0 }}</td>
+		<td >{{ f.1 }}</td>
+		<td >{{ f.2 }}</td>
+		<td >{{ f.3 }}</td>
+	</tr>
+	{% endfor %}
+</table>
+<a href='/reset/{{rs.consumer_group}}/{{rs.topic}}'>Reset topic (Skip all msg)</a>
+</body>
+</html>
